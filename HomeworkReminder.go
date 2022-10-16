@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"github.com/antchfx/htmlquery"
 	"github.com/jordan-wright/email"
@@ -29,6 +29,9 @@ var userAgentList = []string{"Mozilla/5.0 (compatible, MSIE 10.0, Windows NT, Di
 	"Mozilla/4.0 (compatible, MSIE 7.0, Windows NT 5.1, Trident/4.0, SE 2.X MetaSr 1.0, SE 2.X MetaSr 1.0, .NET CLR 2.0.50727, SE 2.X MetaSr 1.0)",
 	"Mozilla/5.0 (iPhone, U, CPU iPhone OS 4_3_3 like Mac OS X, en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5",
 	"MQQBrowser/26 Mozilla/5.0 (Linux, U, Android 2.3.7, zh-cn, MB200 Build/GRJ22, CyanogenMod-7) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"}
+
+const username = ""
+const password = ""
 
 //课程类
 type course struct {
@@ -83,7 +86,7 @@ func getUrlRespHtml(url string, cookie string) string {
 }
 
 func getCookie() string {
-	response, err := http.Get("https://passport2-api.chaoxing.com/v11/loginregister?code=ZS2002zb&cx_xxt_passport=json&uname=15716216316&loginType=1&roleSelect=true")
+	response, err := http.Get("https://passport2-api.chaoxing.com/v11/loginregister?code=" + password + "&cx_xxt_passport=json&uname=" + username + "&loginType=1&roleSelect=true")
 	if err != nil {
 		println()
 	}
@@ -156,9 +159,11 @@ func queryHomeworkInfo(courseInfo []course, cookie string) []homework {
 			homeworkTemp.clazzid = course.clazzid
 			homeworkTemp.courseName = course.courseName
 			homeworkTemp.teacherName = course.teacherName
-			homeworkTemp.states  = state
+			homeworkTemp.states = state
 			homeworkTemp.homeworkName = homeworkName
 			homework_list = append(homework_list, homeworkTemp)
+			log.Println("正在查询" + homeworkTemp.courseName + ":")
+			log.Println(homeworkTemp.courseid + "=" + homeworkTemp.clazzid + "=" + homeworkTemp.courseName + "=" + homeworkTemp.teacherName + "+" + homeworkTemp.states + "+" + homeworkTemp.homeworkName)
 		}
 
 	}
@@ -172,7 +177,7 @@ func getUnfinishedAssignment(homeworkInfo []homework) message {
 	for _, homework_each := range homeworkInfo {
 		var UFHomework = homework{}
 
-		if homework_each.states == "已完成" || homework_each.states == "待批阅" || homework_each.homeworkTime==""{
+		if homework_each.states == "已完成" || homework_each.states == "待批阅" || homework_each.homeworkTime == "" {
 			continue
 		}
 		UFHomework.homeworkTime = homework_each.homeworkTime
@@ -188,7 +193,7 @@ func getUnfinishedAssignment(homeworkInfo []homework) message {
 	return message
 }
 
-func sendMeg(message message) {
+func sendMeg(message message) bool {
 	//message.unfinishedAssignments
 	em := email.NewEmail()
 	// 设置 sender 发送方 的邮箱 ， 此处可以填写自己的邮箱
@@ -198,21 +203,27 @@ func sendMeg(message message) {
 	em.To = []string{"1981517771@qq.com"}
 
 	// 设置主题
-	em.Subject = "学习通小助手提醒!你还有"+ strconv.Itoa(len(message.unfinishedAssignments)) +"门作业未完成"
+	em.Subject = "学习通小助手提醒!你还有" + strconv.Itoa(len(message.unfinishedAssignments)) + "门作业未完成"
 
-	marshal, err2 := json.Marshal(message)
-	if err2 != nil {
-		fmt.Printf("", err2)
+	var bt bytes.Buffer
+	for index, assignment := range message.unfinishedAssignments {
+		name := assignment.courseName
+		homeworkName := assignment.homeworkName
+		homeworkTime := assignment.homeworkTime
+		bt.WriteString(strconv.Itoa(index+1) + "、")
+		bt.WriteString(name + "\t")
+		bt.WriteString(homeworkName + "\t")
+		bt.WriteString(homeworkTime)
+		bt.WriteString("\n\n")
 	}
 
-
-	em.Text = []byte(marshal)
-
+	em.Text = bt.Bytes()
 
 	err := em.Send("smtp.163.com:25", smtp.PlainAuth("", "ziguiway@163.com", "CNQHUCPIYGYPPBPG", "smtp.163.com"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	return true
 }
 
 func main() {
@@ -222,6 +233,9 @@ func main() {
 
 	homeworkInfo := queryHomeworkInfo(courseInfo, cookie)
 	unfinishedAssignments := getUnfinishedAssignment(homeworkInfo)
-	fmt.Println("", unfinishedAssignments)
-	sendMeg(unfinishedAssignments)
+	log.Println("", unfinishedAssignments)
+	meg := sendMeg(unfinishedAssignments)
+	if meg {
+		log.Println("发送成功")
+	}
 }
