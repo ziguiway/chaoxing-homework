@@ -36,6 +36,7 @@ const password = "ZS2002zb"
 type user struct {
 	username string
 	password string
+	email    string
 }
 
 //课程类
@@ -80,6 +81,7 @@ func readUsernamePassword() []user {
 		i := strings.Split(each, " ")
 		user.username = i[0]
 		user.password = i[1]
+		user.email = i[2]
 		userList = append(userList, user)
 	}
 	fmt.Println("", userList)
@@ -221,14 +223,14 @@ func getUnfinishedAssignment(homeworkInfo []homework) message {
 	return message
 }
 
-func sendMeg(message message) bool {
+func sendMeg(message message, myemail string) bool {
 	//message.unfinishedAssignments
 	em := email.NewEmail()
 	// 设置 sender 发送方 的邮箱 ， 此处可以填写自己的邮箱
 	em.From = "ziguiway@163.com"
 
 	// 设置 receiver 接收方 的邮箱  此处也可以填写自己的邮箱， 就是自己发邮件给自己
-	em.To = []string{"1981517771@qq.com"}
+	em.To = []string{myemail}
 
 	// 设置主题
 	em.Subject = "学习通小助手提醒!你还有" + strconv.Itoa(len(message.unfinishedAssignments)) + "门作业未完成"
@@ -261,14 +263,15 @@ func main() {
 	for index, u := range users {
 		username := u.username
 		password := u.password
-		log.Println("正在查询用户" + username + ",该用户位于用户" + strconv.Itoa(index))
+		e := u.email
+		log.Println("正在查询用户" + username + ",该用户位于用户" + strconv.Itoa(index+1))
 		cookie := getCookie(username, password)
 		respHtml := getUrlRespHtml("https://mooc1-2.chaoxing.com/course/phone/courselistdata?courseFolderId=0&isFiled=0&query=", cookie)
 		courseInfo := queryCourseInfo(respHtml)
 		homeworkInfo := queryHomeworkInfo(courseInfo, cookie)
 		unfinishedAssignments := getUnfinishedAssignment(homeworkInfo)
 		log.Println("", unfinishedAssignments)
-		meg := sendMeg(unfinishedAssignments)
+		meg := sendMeg(unfinishedAssignments, e)
 		if meg {
 			log.Println("发送成功")
 			time.Sleep(3000)
