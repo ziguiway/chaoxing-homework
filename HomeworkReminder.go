@@ -30,8 +30,13 @@ var userAgentList = []string{"Mozilla/5.0 (compatible, MSIE 10.0, Windows NT, Di
 	"Mozilla/5.0 (iPhone, U, CPU iPhone OS 4_3_3 like Mac OS X, en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8J2 Safari/6533.18.5",
 	"MQQBrowser/26 Mozilla/5.0 (Linux, U, Android 2.3.7, zh-cn, MB200 Build/GRJ22, CyanogenMod-7) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"}
 
-const username = ""
-const password = ""
+const username = "15716216316"
+const password = "ZS2002zb"
+
+type user struct {
+	username string
+	password string
+}
 
 //课程类
 type course struct {
@@ -57,6 +62,29 @@ type homework struct {
 type message struct {
 	queryTime             string
 	unfinishedAssignments []homework
+}
+
+func readUsernamePassword() []user {
+	f, err := ioutil.ReadFile("./userInfo.txt")
+	if err != nil {
+		fmt.Println("read fail", err)
+	}
+	str := string(f)
+	split := strings.Split(str, "#")
+	var userList []user
+	for _, each := range split {
+		if each == "" {
+			continue
+		}
+		var user user
+		i := strings.Split(each, " ")
+		user.username = i[0]
+		user.password = i[1]
+		userList = append(userList, user)
+	}
+	fmt.Println("", userList)
+	return userList
+
 }
 
 //生成随机UserAgent
@@ -85,10 +113,10 @@ func getUrlRespHtml(url string, cookie string) string {
 
 }
 
-func getCookie() string {
+func getCookie(username string, password string) string {
 	response, err := http.Get("https://passport2-api.chaoxing.com/v11/loginregister?code=" + password + "&cx_xxt_passport=json&uname=" + username + "&loginType=1&roleSelect=true")
 	if err != nil {
-		println()
+		log.Println("该用户账号或密码输入错误")
 	}
 	defer response.Body.Close() //在回复后必须关闭回复的主体
 
@@ -227,15 +255,23 @@ func sendMeg(message message) bool {
 }
 
 func main() {
-	cookie := getCookie()
-	respHtml := getUrlRespHtml("https://mooc1-2.chaoxing.com/course/phone/courselistdata?courseFolderId=0&isFiled=0&query=", cookie)
-	courseInfo := queryCourseInfo(respHtml)
+	//cookie := getCookie()
 
-	homeworkInfo := queryHomeworkInfo(courseInfo, cookie)
-	unfinishedAssignments := getUnfinishedAssignment(homeworkInfo)
-	log.Println("", unfinishedAssignments)
-	meg := sendMeg(unfinishedAssignments)
-	if meg {
-		log.Println("发送成功")
+	users := readUsernamePassword()
+	for index, u := range users {
+		username := u.username
+		password := u.password
+		log.Println("正在查询用户" + username + ",该用户位于用户" + strconv.Itoa(index))
+		cookie := getCookie(username, password)
+		respHtml := getUrlRespHtml("https://mooc1-2.chaoxing.com/course/phone/courselistdata?courseFolderId=0&isFiled=0&query=", cookie)
+		courseInfo := queryCourseInfo(respHtml)
+		homeworkInfo := queryHomeworkInfo(courseInfo, cookie)
+		unfinishedAssignments := getUnfinishedAssignment(homeworkInfo)
+		log.Println("", unfinishedAssignments)
+		meg := sendMeg(unfinishedAssignments)
+		if meg {
+			log.Println("发送成功")
+			time.Sleep(3000)
+		}
 	}
 }
