@@ -31,7 +31,7 @@ var userAgentList = []string{"Mozilla/5.0 (compatible, MSIE 10.0, Windows NT, Di
 	"MQQBrowser/26 Mozilla/5.0 (Linux, U, Android 2.3.7, zh-cn, MB200 Build/GRJ22, CyanogenMod-7) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1"}
 
 const username = "15716216316"
-const password = "ZS2002zb"
+const password = "123456"
 
 type user struct {
 	username string
